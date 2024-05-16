@@ -25,105 +25,20 @@ import pypdf
 logging.basicConfig(level=logging.INFO)
 
 
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--batchsize",
-        "-b",
-        type=int,
-        default=default_batch_size(),
-        help="Batch size to use.",
-    )
-    parser.add_argument(
-        "--checkpoint",
-        "-c",
-        type=Path,
-        default=None,
-        help="Path to checkpoint directory.",
-    )
-    parser.add_argument(
-        "--model",
-        "-m",
-        type=str,
-        default="0.1.0-small",
-        help=f"Model tag to use.",
-    )
-    parser.add_argument("--out", "-o", type=Path, help="Output directory.")
-    parser.add_argument(
-        "--recompute",
-        action="store_true",
-        help="Recompute already computed PDF, discarding previous predictions.",
-    )
-    parser.add_argument(
-        "--full-precision",
-        action="store_true",
-        help="Use float32 instead of bfloat16. Can speed up CPU conversion for some setups.",
-    )
-    parser.add_argument(
-        "--no-markdown",
-        dest="markdown",
-        action="store_false",
-        help="Do not add postprocessing step for markdown compatibility.",
-    )
-    parser.add_argument(
-        "--markdown",
-        action="store_true",
-        help="Add postprocessing step for markdown compatibility (default).",
-    )
-    parser.add_argument(
-        "--no-skipping",
-        dest="skipping",
-        action="store_false",
-        help="Don't apply failure detection heuristic.",
-    )
-    parser.add_argument(
-        "--pages",
-        "-p",
-        type=str,
-        help="Provide page numbers like '1-4,7' for pages 1 through 4 and page 7. Only works for single PDF input.",
-    )
-    parser.add_argument("pdf", nargs="+", type=Path, help="PDF(s) to process.")
-    args = parser.parse_args()
-    if args.checkpoint is None or not args.checkpoint.exists():
-        args.checkpoint = get_checkpoint(args.checkpoint, model_tag=args.model)
-    if args.out is None:
-        logging.warning("No output directory. Output will be printed to console.")
-    else:
-        if not args.out.exists():
-            logging.info("Output directory does not exist. Creating output directory.")
-            args.out.mkdir(parents=True)
-        if not args.out.is_dir():
-            logging.error("Output has to be directory.")
-            sys.exit(1)
-    if len(args.pdf) == 1 and not args.pdf[0].suffix == ".pdf":
-        # input is a list of pdfs
-        try:
-            pdfs_path = args.pdf[0]
-            if pdfs_path.is_dir():
-                args.pdf = list(pdfs_path.rglob("*.pdf"))
-            else:
-                args.pdf = [
-                    Path(l) for l in open(pdfs_path).read().split("\n") if len(l) > 0
-                ]
-            logging.info(f"Found {len(args.pdf)} files.")
-        except:
-            pass
-    if args.pages and len(args.pdf) == 1:
-        pages = []
-        for p in args.pages.split(","):
-            if "-" in p:
-                start, end = p.split("-")
-                pages.extend(range(int(start) - 1, int(end)))
-            else:
-                pages.append(int(p) - 1)
-        args.pages = pages
-    else:
-        args.pages = None
-    return args
-
-
-def main():
-    args = get_args()
+def main(pdf,outpath=None,chkpt='./nougat-0.1.0',model='0.1.0',recompute=False,full_precision=False,markdown=True,skipping=True,pages=None,batchsize=1):
+    if outpath!=None:
+        outpath=Path(outpath)
+    args = argparse.Namespace(
+    batchsize=batchsize,
+    checkpoint=Path(chkpt),
+    model=model,
+    out=outpath,
+    recompute=recompute,
+    full_precision=full_precision,
+    markdown=markdown,
+    skipping=skipping,
+    pages=pages,
+    pdf=[Path(pdf)])
     model = NougatModel.from_pretrained(args.checkpoint)
     model = move_to_device(model, bf16=not args.full_precision, cuda=args.batchsize > 0)
     if args.batchsize <= 0:

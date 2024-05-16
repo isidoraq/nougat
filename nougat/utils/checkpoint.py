@@ -13,7 +13,7 @@ from pathlib import Path
 import torch
 
 BASE_URL = "https://github.com/facebookresearch/nougat/releases/download"
-MODEL_TAG = "0.1.0-small"
+MODEL_TAG = "0.1.0"
 
 
 # source: https://stackoverflow.com/a/71459251
@@ -78,7 +78,7 @@ def torch_hub(model_tag: Optional[str] = MODEL_TAG) -> Path:
     hub_path = old_path.with_name(f"nougat-{model_tag}")
     if old_path.exists():
         # move to new format
-        old_path.rename(old_path.with_name("nougat-0.1.0-small"))
+        old_path.rename(old_path.with_name("nougat-0.1.0"))
     return hub_path
 
 
